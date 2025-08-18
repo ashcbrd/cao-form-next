@@ -1,34 +1,47 @@
-import { redirect } from "next/navigation"
-import { getSession } from "@/lib/auth/session"
-import { sql } from "@/lib/db/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { LogOut, FileText, BarChart3, Settings } from "lucide-react"
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { sql } from "@/lib/db/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LogOut, FileText, BarChart3, Settings } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export default async function DashboardPage() {
-  const session = await getSession()
+  const session = await getSession();
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
   // Get survey statistics
-  const surveyStats = await sql`
-    SELECT 
-      COUNT(*) as total_surveys,
-      COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_surveys,
-      COUNT(CASE WHEN pdf_generated = true THEN 1 END) as reports_generated
-    FROM survey_responses 
-    WHERE user_id = ${session.user.id}
-  `
-
-  const stats = surveyStats[0]
+  const surveyStats = await sql /* sql */ `
+  WITH has_table AS (
+    SELECT to_regclass('public.survey_responses') AS rel
+  )
+  SELECT
+    CASE WHEN (SELECT rel FROM has_table) IS NULL THEN 0
+         ELSE (SELECT COUNT(*) FROM public.survey_responses WHERE user_id = ${session.user.id})
+    END AS total_surveys,
+    CASE WHEN (SELECT rel FROM has_table) IS NULL THEN 0
+         ELSE (SELECT COUNT(*) FROM public.survey_responses WHERE user_id = ${session.user.id} AND status = 'completed')
+    END AS completed_surveys,
+    CASE WHEN (SELECT rel FROM has_table) IS NULL THEN 0
+         ELSE (SELECT COUNT(*) FROM public.survey_responses WHERE user_id = ${session.user.id} AND pdf_generated = true)
+    END AS reports_generated
+`;
+  const stats = surveyStats[0];
 
   const handleLogout = async () => {
-    "use server"
-    await fetch("/api/auth/logout", { method: "POST" })
-    redirect("/login")
-  }
+    "use server";
+    await fetch("/api/auth/logout", { method: "POST" });
+    redirect("/login");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,15 +49,16 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">SUGB Dashboard</h1>
+              <h1 className="text-xl font-semibold text-gray-900">
+                SUGB Dashboard
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome, {session.user.name || session.user.email}</span>
+              <span className="text-sm text-gray-600">
+                Welcome, {session.user.name || session.user.email}
+              </span>
               <form action={handleLogout}>
-                <Button variant="outline" size="sm">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+                <LogoutButton />
               </form>
             </div>
           </div>
@@ -53,9 +67,12 @@ export default async function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Standard Inquiry for Equitable Pay</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Standard Inquiry for Equitable Pay
+          </h2>
           <p className="text-gray-600">
-            Complete your organization's pay equity analysis and generate comprehensive reports.
+            Complete your organization's pay equity analysis and generate
+            comprehensive reports.
           </p>
         </div>
 
@@ -66,8 +83,12 @@ export default async function DashboardPage() {
               <div className="flex items-center">
                 <FileText className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Surveys</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total_surveys}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Surveys
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.total_surveys}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -79,7 +100,9 @@ export default async function DashboardPage() {
                 <BarChart3 className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.completed_surveys}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.completed_surveys}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -90,8 +113,12 @@ export default async function DashboardPage() {
               <div className="flex items-center">
                 <FileText className="h-8 w-8 text-purple-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Reports Generated</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.reports_generated}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Reports Generated
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.reports_generated}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -106,7 +133,9 @@ export default async function DashboardPage() {
                 <FileText className="h-5 w-5 mr-2" />
                 New Survey
               </CardTitle>
-              <CardDescription>Start a new pay equity survey for your organization</CardDescription>
+              <CardDescription>
+                Start a new pay equity survey for your organization
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" asChild>
@@ -121,10 +150,16 @@ export default async function DashboardPage() {
                 <BarChart3 className="h-5 w-5 mr-2" />
                 View Reports
               </CardTitle>
-              <CardDescription>Access and download your completed survey reports</CardDescription>
+              <CardDescription>
+                Access and download your completed survey reports
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full bg-transparent" asChild>
+              <Button
+                variant="outline"
+                className="w-full bg-transparent"
+                asChild
+              >
                 <a href="/reports">View Reports</a>
               </Button>
             </CardContent>
@@ -136,10 +171,16 @@ export default async function DashboardPage() {
                 <Settings className="h-5 w-5 mr-2" />
                 Profile & Settings
               </CardTitle>
-              <CardDescription>Manage your account and organization settings</CardDescription>
+              <CardDescription>
+                Manage your account and organization settings
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full bg-transparent" asChild>
+              <Button
+                variant="outline"
+                className="w-full bg-transparent"
+                asChild
+              >
                 <a href="/profile">Manage Profile</a>
               </Button>
             </CardContent>
@@ -147,5 +188,5 @@ export default async function DashboardPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

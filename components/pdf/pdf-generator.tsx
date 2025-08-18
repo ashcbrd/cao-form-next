@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,20 +29,25 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-interface PDFGeneratorProps {
+type PDFGeneratorProps = {
   surveyResponseId: string;
-  onGenerated?: (pdfUrl: string) => void;
-}
+};
 
-export function PDFGenerator({
-  surveyResponseId,
-  onGenerated,
-}: PDFGeneratorProps) {
+export type GenerateOptions = {
+  format?: "A4" | "Letter";
+  orientation?: "portrait" | "landscape";
+  includeCharts?: boolean;
+  includeBenchmarking?: boolean;
+};
+
+export function PDFGenerator({ surveyResponseId }: PDFGeneratorProps) {
+  const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const [options, setOptions] = useState({
     format: "A4",
@@ -50,90 +56,77 @@ export function PDFGenerator({
     includeBenchmarking: true,
   });
 
-  const handleGenerate = async () => {
+  async function handleGenerate() {
     setIsGenerating(true);
     setError(null);
     setStatus(null);
 
     try {
-      const response = await fetch("/api/pdf/generate", {
+      const res = await fetch("/api/pdf/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          surveyResponseId,
-          options,
-        }),
+        body: JSON.stringify({ surveyResponseId, options }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
+      const data = await res.json();
+      if (!res.ok)
         throw new Error(data.error || "Failed to start PDF generation");
-      }
 
       setJobId(data.jobId);
       setStatus("pending");
-
-      // Poll for status
       pollStatus(data.jobId);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Unknown error");
+    } catch (e: any) {
+      setError(e?.message ?? "Unknown error");
       setIsGenerating(false);
     }
-  };
+  }
 
-  const pollStatus = async (jobId: string) => {
-    const maxAttempts = 30; // 30 seconds max
+  function pollStatus(jobId: string) {
+    const maxAttempts = 30;
     let attempts = 0;
 
-    const poll = async () => {
+    const tick = async () => {
       try {
-        const response = await fetch(`/api/pdf/status/${jobId}`);
-        const data = await response.json();
+        const res = await fetch(`/api/pdf/status/${jobId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to check status");
 
-        if (response.ok) {
-          setStatus(data.status);
+        setStatus(data.status);
 
-          if (data.status === "completed") {
-            setPdfUrl(data.pdfUrl);
-            setIsGenerating(false);
-            onGenerated?.(data.pdfUrl);
-            return;
-          }
-
-          if (data.status === "failed") {
-            setError(data.error || "PDF generation failed");
-            setIsGenerating(false);
-            return;
-          }
-
-          // Continue polling if still processing
-          if (data.status === "processing" || data.status === "pending") {
-            attempts++;
-            if (attempts < maxAttempts) {
-              setTimeout(poll, 1000);
-            } else {
-              setError("PDF generation timed out");
-              setIsGenerating(false);
-            }
-          }
-        } else {
-          setError(data.error || "Failed to check status");
+        if (data.status === "completed") {
+          setPdfUrl(data.pdfUrl);
           setIsGenerating(false);
+          // Refresh server components so /reports shows the new pdf_url
+          startTransition(() => router.refresh());
+          return;
         }
-      } catch (error) {
+
+        if (data.status === "failed") {
+          setError(data.error || "PDF generation failed");
+          setIsGenerating(false);
+          return;
+        }
+
+        if (data.status === "processing" || data.status === "pending") {
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(tick, 1000);
+          } else {
+            setError("PDF generation timed out");
+            setIsGenerating(false);
+          }
+        }
+      } catch {
         setError("Failed to check generation status");
         setIsGenerating(false);
       }
     };
 
-    poll();
-  };
+    tick();
+  }
 
-  const getStatusIcon = () => {
+  function getStatusIcon() {
     switch (status) {
       case "pending":
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case "processing":
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case "completed":
@@ -143,9 +136,9 @@ export function PDFGenerator({
       default:
         return null;
     }
-  };
+  }
 
-  const getStatusText = () => {
+  function getStatusText() {
     switch (status) {
       case "pending":
         return "Queued for processing...";
@@ -158,7 +151,7 @@ export function PDFGenerator({
       default:
         return "";
     }
-  };
+  }
 
   return (
     <Card>
@@ -179,9 +172,7 @@ export function PDFGenerator({
             <Label>Page Format</Label>
             <Select
               value={options.format}
-              onValueChange={(value) =>
-                setOptions({ ...options, format: value })
-              }
+              onValueChange={(v) => setOptions({ ...options, format: v })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -197,9 +188,7 @@ export function PDFGenerator({
             <Label>Orientation</Label>
             <Select
               value={options.orientation}
-              onValueChange={(value) =>
-                setOptions({ ...options, orientation: value })
-              }
+              onValueChange={(v) => setOptions({ ...options, orientation: v })}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -217,8 +206,8 @@ export function PDFGenerator({
             <Checkbox
               id="includeCharts"
               checked={options.includeCharts}
-              onCheckedChange={(checked) =>
-                setOptions({ ...options, includeCharts: !!checked })
+              onCheckedChange={(c) =>
+                setOptions({ ...options, includeCharts: !!c })
               }
             />
             <Label htmlFor="includeCharts">Include data visualizations</Label>
@@ -228,8 +217,8 @@ export function PDFGenerator({
             <Checkbox
               id="includeBenchmarking"
               checked={options.includeBenchmarking}
-              onCheckedChange={(checked) =>
-                setOptions({ ...options, includeBenchmarking: !!checked })
+              onCheckedChange={(c) =>
+                setOptions({ ...options, includeBenchmarking: !!c })
               }
             />
             <Label htmlFor="includeBenchmarking">
@@ -266,10 +255,10 @@ export function PDFGenerator({
         <div className="flex gap-2">
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || pending}
             className="flex-1"
           >
-            {isGenerating ? (
+            {isGenerating || pending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Generating...

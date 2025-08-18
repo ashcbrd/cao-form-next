@@ -56,6 +56,7 @@
           "type": "SELECT",
           "order": 1,
           "isRequired": true,
+          "options": ["A1", "A2", "A3", "B1", "B2", "C1"],
           "prefillMapping": "salaryTable.scale"
         },
         {
@@ -255,7 +256,13 @@
           "type": "MULTISELECT",
           "order": 2,
           "isRequired": false,
-          "options": ["Extra vacation days", "Cash payment", "Pension contribution", "Training/education", "Other"]
+          "options": [
+            "Extra vacation days",
+            "Cash payment",
+            "Pension contribution",
+            "Training/education",
+            "Other"
+          ]
         }
       ]
     },

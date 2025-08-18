@@ -1,58 +1,102 @@
-"use client"
-
-import { redirect } from "next/navigation"
-import { getSession } from "@/lib/auth/session"
-import { sql } from "@/lib/db/client"
-import { SurveyForm } from "@/components/form/survey-form"
-import surveySchema from "@/lib/survey-schema.json"
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { sql } from "@/lib/db/client";
+import surveySchema from "@/lib/survey-schema.json";
+import { SurveyFormWrapper } from "./survey-form-wrapper";
 
 export default async function SurveyPage() {
-  const session = await getSession()
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-  if (!session) {
-    redirect("/login")
-  }
-
-  // Get existing draft if any
-  const existingResponses = await sql`
-    SELECT responses FROM survey_responses 
-    WHERE user_id = ${session.user.id} 
-    AND status IN ('draft', 'in-progress')
-    ORDER BY created_at DESC 
+  // Grab latest active draft to prefill
+  const existingResponses = await sql /* sql */ `
+    SELECT id, responses FROM public.survey_responses
+    WHERE user_id = ${session.user.id}
+      AND status IN ('draft','in_progress')
+    ORDER BY created_at DESC
     LIMIT 1
-  `
+  `;
+  const activeDraftId = existingResponses.length
+    ? existingResponses[0].id
+    : null;
+  const initialResponses =
+    existingResponses.length > 0 ? existingResponses[0].responses : {};
 
-  const initialResponses = existingResponses.length > 0 ? existingResponses[0].responses : {}
+  // -------- Server actions (update-or-insert) -------------------------------
 
-  const handleSave = async (responses: any, isComplete: boolean) => {
-    "use server"
+  async function saveDraftAction(responses: any): Promise<void> {
+    "use server";
+    const s = await getSession();
+    if (!s) redirect("/login");
 
-    const response = await fetch("/api/survey/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ responses, isComplete }),
-    })
+    // Try to update the latest active draft; insert if none exists
+    const existing = await sql /* sql */ `
+      SELECT id FROM public.survey_responses
+      WHERE user_id = ${s.user.id}
+        AND status IN ('draft','in_progress')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
 
-    if (!response.ok) {
-      throw new Error("Failed to save survey")
+    if (existing.length > 0) {
+      await sql /* sql */ `
+        UPDATE public.survey_responses
+        SET responses = ${JSON.stringify(responses)}::jsonb,
+            status = 'in_progress',
+            updated_at = NOW()
+        WHERE id = ${existing[0].id}
+      `;
+    } else {
+      await sql /* sql */ `
+        INSERT INTO public.survey_responses (user_id, responses, status, created_at, updated_at)
+        VALUES (${s.user.id}, ${JSON.stringify(responses)}::jsonb, 'in_progress', NOW(), NOW())
+      `;
     }
   }
 
-  const handleSubmit = async (responses: any) => {
-    "use server"
+  async function submitSurveyAction(responses: any): Promise<void> {
+    "use server";
+    const s = await getSession();
+    if (!s) redirect("/login");
 
-    await handleSave(responses, true)
-    redirect("/dashboard?submitted=true")
+    // Prefer upgrading the user's current draft/in_progress to completed
+    const existing = await sql /* sql */ `
+      SELECT id FROM public.survey_responses
+      WHERE user_id = ${s.user.id}
+        AND status IN ('draft','in_progress')
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+      await sql /* sql */ `
+        UPDATE public.survey_responses
+        SET responses = ${JSON.stringify(responses)}::jsonb,
+            status = 'completed',
+            submitted_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${existing[0].id}
+      `;
+    } else {
+      // Fallback: no draft found, create a completed row
+      await sql /* sql */ `
+        INSERT INTO public.survey_responses (user_id, responses, status, submitted_at, created_at, updated_at)
+        VALUES (${s.user.id}, ${JSON.stringify(responses)}::jsonb, 'completed', NOW(), NOW(), NOW())
+      `;
+    }
+
+    redirect("/dashboard?submitted=true");
   }
+  // -------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SurveyForm
+      <SurveyFormWrapper
         schema={surveySchema}
         initialResponses={initialResponses}
-        onSave={handleSave}
-        onSubmit={handleSubmit}
+        onSave={saveDraftAction}
+        onSubmit={submitSurveyAction}
       />
     </div>
-  )
+  );
 }

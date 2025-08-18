@@ -1,54 +1,61 @@
-import { sql } from "@/lib/db/client"
-import { generateMagicToken, authConfig } from "./config"
+import { sql } from "@/lib/db/client";
+import { generateMagicToken, authConfig } from "./config";
 
 export async function generateMagicLink(email: string): Promise<string> {
-  const token = generateMagicToken()
-  const expires = new Date(Date.now() + authConfig.magicLinkExpiry)
+  const token = generateMagicToken();
+  const expires = new Date(Date.now() + authConfig.magicLinkExpiry);
 
-  const userResult = await sql`
-    INSERT INTO users (email, email_verified, role)
-    VALUES (${email}, false, 'user')
+  const userRows = await sql /* sql */ `
+    INSERT INTO public.users (email)
+    VALUES (${email})
     ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
     RETURNING id
-  `
+  `;
+  const userId: string = userRows[0].id;
 
-  const userId = userResult[0].id
+  await sql /* sql */ `
+    INSERT INTO public.magic_links (user_id, token, expires_at)
+    VALUES (${userId}, ${token}, ${expires})
+  `;
 
-  await sql`
-    INSERT INTO magic_links (user_id, token, expires_at, used)
-    VALUES (${userId}, ${token}, ${expires}, false)
-  `
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    "http://localhost:3000";
 
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-  return `${baseUrl}/auth/verify?token=${token}&email=${encodeURIComponent(email)}`
+  return `${baseUrl}/auth/verify?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
 }
 
-export async function verifyMagicLink(token: string, email: string): Promise<boolean> {
-  const links = await sql`
-    SELECT ml.id, ml.expires_at, ml.used
-    FROM magic_links ml
-    JOIN users u ON ml.user_id = u.id
-    WHERE u.email = ${email} 
-    AND ml.token = ${token}
-    AND ml.expires_at > NOW()
-    AND ml.used = false
-  `
+export async function verifyMagicLink(
+  token: string,
+  email: string
+): Promise<boolean> {
+  const links = await sql /* sql */ `
+    SELECT ml.token, ml.expires_at, ml.used_at
+    FROM public.magic_links AS ml
+    JOIN public.users AS u ON ml.user_id = u.id
+    WHERE u.email = ${email}
+      AND ml.token = ${token}
+      AND ml.expires_at > NOW()
+      AND ml.used_at IS NULL
+    LIMIT 1
+  `;
+  if (links.length === 0) return false;
 
-  if (links.length === 0) {
-    return false
-  }
-
-  await sql`
-    UPDATE magic_links 
-    SET used = true
+  await sql /* sql */ `
+    UPDATE public.magic_links
+    SET used_at = NOW()
     WHERE token = ${token}
-  `
+  `;
 
-  await sql`
-    UPDATE users 
-    SET email_verified = true, updated_at = NOW()
+  await sql /* sql */ `
+    UPDATE public.users
+    SET email_verified = true,
+        verified_at = NOW(),
+        updated_at = NOW(),
+        last_login_at = NOW()
     WHERE email = ${email}
-  `
+  `;
 
-  return true
+  return true;
 }
