@@ -1,0 +1,325 @@
+{
+  "sections": [
+    {
+      "id": "general",
+      "name": "General Information",
+      "order": 1,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "employee_name",
+          "text": "Employee Name",
+          "type": "TEXT",
+          "order": 1,
+          "isRequired": true,
+          "validation": {
+            "required": true
+          }
+        },
+        {
+          "id": "employee_id",
+          "text": "Employee ID",
+          "type": "TEXT",
+          "order": 2,
+          "isRequired": true,
+          "validation": {
+            "required": true
+          }
+        },
+        {
+          "id": "cao_name",
+          "text": "CAO Name",
+          "type": "TEXT",
+          "order": 3,
+          "isRequired": true,
+          "prefillMapping": "cao.name"
+        },
+        {
+          "id": "cao_version",
+          "text": "CAO Version",
+          "type": "TEXT",
+          "order": 4,
+          "isRequired": true,
+          "prefillMapping": "cao.version"
+        }
+      ]
+    },
+    {
+      "id": "pay",
+      "name": "Pay Information",
+      "order": 2,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "salary_scale",
+          "text": "Salary Scale",
+          "type": "SELECT",
+          "order": 1,
+          "isRequired": true,
+          "prefillMapping": "salaryTable.scale"
+        },
+        {
+          "id": "salary_step",
+          "text": "Salary Step",
+          "type": "NUMBER",
+          "order": 2,
+          "isRequired": true,
+          "validation": {
+            "min": 1,
+            "max": 20
+          },
+          "prefillMapping": "salaryTable.step"
+        },
+        {
+          "id": "gross_salary",
+          "text": "Gross Monthly Salary",
+          "type": "MONEY",
+          "order": 3,
+          "isRequired": true,
+          "validation": {
+            "min": 0
+          },
+          "prefillMapping": "salaryTable.amount"
+        },
+        {
+          "id": "fte_percentage",
+          "text": "FTE Percentage",
+          "type": "PERCENT",
+          "order": 4,
+          "isRequired": true,
+          "validation": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      ]
+    },
+    {
+      "id": "allowances",
+      "name": "Allowances",
+      "order": 3,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "has_allowances",
+          "text": "Do you receive any allowances?",
+          "type": "YES_NO_WITH_EXPLANATION",
+          "order": 1,
+          "isRequired": true
+        },
+        {
+          "id": "allowance_types",
+          "text": "Types of allowances received",
+          "type": "MULTISELECT_WITH_EXPLANATION",
+          "order": 2,
+          "isRequired": false,
+          "options": [
+            "Travel allowance",
+            "Meal allowance",
+            "Phone allowance",
+            "Overtime allowance",
+            "Shift allowance",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reimbursements",
+      "name": "Reimbursements",
+      "order": 4,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "travel_reimbursement",
+          "text": "Travel expense reimbursement per month",
+          "type": "MONEY",
+          "order": 1,
+          "isRequired": false,
+          "validation": {
+            "min": 0
+          }
+        },
+        {
+          "id": "other_reimbursements",
+          "text": "Other reimbursements",
+          "type": "TEXTAREA",
+          "order": 2,
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "id": "special_payments",
+      "name": "Special Payments",
+      "order": 5,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "thirteenth_month",
+          "text": "13th month payment",
+          "type": "MONEY",
+          "order": 1,
+          "isRequired": false,
+          "validation": {
+            "min": 0
+          }
+        },
+        {
+          "id": "holiday_allowance",
+          "text": "Holiday allowance percentage",
+          "type": "PERCENT",
+          "order": 2,
+          "isRequired": false,
+          "validation": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      ]
+    },
+    {
+      "id": "sick_pay",
+      "name": "Sick Pay",
+      "order": 6,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "sick_pay_percentage",
+          "text": "Sick pay percentage of salary",
+          "type": "PERCENT",
+          "order": 1,
+          "isRequired": true,
+          "validation": {
+            "min": 0,
+            "max": 100
+          }
+        },
+        {
+          "id": "sick_pay_duration",
+          "text": "Maximum sick pay duration (weeks)",
+          "type": "NUMBER",
+          "order": 2,
+          "isRequired": true,
+          "validation": {
+            "min": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "leave",
+      "name": "Leave Entitlements",
+      "order": 7,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "annual_leave_days",
+          "text": "Annual leave days per year",
+          "type": "NUMBER",
+          "order": 1,
+          "isRequired": true,
+          "validation": {
+            "min": 0,
+            "max": 365
+          }
+        },
+        {
+          "id": "additional_leave",
+          "text": "Additional leave entitlements",
+          "type": "TEXTAREA",
+          "order": 2,
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "id": "ikb",
+      "name": "IKB (Individueel Keuzebudget)",
+      "order": 8,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "ikb_amount",
+          "text": "IKB amount per year",
+          "type": "MONEY",
+          "order": 1,
+          "isRequired": false,
+          "validation": {
+            "min": 0
+          }
+        },
+        {
+          "id": "ikb_usage",
+          "text": "How do you use your IKB?",
+          "type": "MULTISELECT",
+          "order": 2,
+          "isRequired": false,
+          "options": ["Extra vacation days", "Cash payment", "Pension contribution", "Training/education", "Other"]
+        }
+      ]
+    },
+    {
+      "id": "pension",
+      "name": "Pension",
+      "order": 9,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "pension_scheme",
+          "text": "Pension scheme name",
+          "type": "TEXT",
+          "order": 1,
+          "isRequired": false
+        },
+        {
+          "id": "employer_contribution",
+          "text": "Employer pension contribution percentage",
+          "type": "PERCENT",
+          "order": 2,
+          "isRequired": false,
+          "validation": {
+            "min": 0,
+            "max": 100
+          }
+        },
+        {
+          "id": "employee_contribution",
+          "text": "Employee pension contribution percentage",
+          "type": "PERCENT",
+          "order": 3,
+          "isRequired": false,
+          "validation": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      ]
+    },
+    {
+      "id": "sustainability_other",
+      "name": "Sustainability & Other Benefits",
+      "order": 10,
+      "isRequired": true,
+      "questions": [
+        {
+          "id": "sustainability_bonus",
+          "text": "Sustainability bonus amount",
+          "type": "MONEY",
+          "order": 1,
+          "isRequired": false,
+          "validation": {
+            "min": 0
+          }
+        },
+        {
+          "id": "other_benefits",
+          "text": "Other benefits or arrangements",
+          "type": "TEXTAREA",
+          "order": 2,
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
