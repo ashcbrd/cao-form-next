@@ -113,7 +113,16 @@ CREATE TABLE attachments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,                       -- session token is the PK
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id     ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at  ON sessions(expires_at);
 CREATE INDEX idx_surveys_user_id ON surveys(user_id);
 CREATE INDEX idx_surveys_status ON surveys(status);
 CREATE INDEX idx_sections_survey_id ON sections(survey_id);

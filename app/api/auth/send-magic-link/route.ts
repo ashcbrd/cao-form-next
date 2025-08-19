@@ -1,3 +1,4 @@
+// app/api/auth/send-magic-link/route.ts
 import { type NextRequest, NextResponse } from "next/server";
 import sgMail from "@sendgrid/mail";
 import { generateMagicLink } from "@/lib/auth/magic-link";
@@ -26,7 +27,6 @@ export async function POST(request: NextRequest) {
     const from = process.env.EMAIL_FROM || "noreply@example.com";
     const subject = "Your SUGB sign-in link";
 
-    // ✅ No JSX (works in .ts) and ✅ await async render()
     const emailElement = React.createElement(MagicLinkEmail, {
       link: magicLink,
     });
